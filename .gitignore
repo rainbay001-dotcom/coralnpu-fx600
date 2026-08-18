@@ -1,0 +1,7 @@
+build/out_*/
+*.jou
+*.log
+*.str
+.Xil/
+host/coralnpu_run
+host/dma_ip_drivers/
