@@ -35,9 +35,13 @@ if {[llength [get_parts $part]] == 0} {
 create_project -force -part $part fx600_coralnpu_$cfg $outdir/prj
 
 # --- RTL sources ---------------------------------------------------------------
-switch $cfg {
-  scalar { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0 }
-  rvv    { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 40.0 }
+# cfg: scalar|rvv (JTAG-only top, default) or scalar_pcie|rvv_pcie (XDMA top)
+set iface jtag
+switch -glob $cfg {
+  scalar       { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0 }
+  rvv          { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 40.0 }
+  scalar_pcie  { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0; set iface pcie }
+  rvv_pcie     { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 40.0; set iface pcie }
   default { puts "ERROR: unknown cfg $cfg"; exit 1 }
 }
 
@@ -48,9 +52,14 @@ set rest  [lsort [glob -nocomplain $rtldir/*.sv $rtldir/*.v]]
 foreach f $pkgs { set idx [lsearch -exact $rest $f]; if {$idx >= 0} { set rest [lreplace $rest $idx $idx] } }
 
 add_files -norecurse [concat $svh $pkgs $rest]
-add_files -norecurse [list $root/board/axil_to_core_axi4.sv $root/board/axi4_decerr_responder.sv $root/board/fx600_coralnpu_top.sv]
+if {$iface eq "jtag"} {
+  add_files -norecurse [list $root/board/axi4_decerr_responder.sv $root/board/fx600_jtag_top.sv]
+  set_property top fx600_jtag_top [current_fileset]
+} else {
+  add_files -norecurse [list $root/board/axil_to_core_axi4.sv $root/board/axi4_decerr_responder.sv $root/board/fx600_coralnpu_top.sv]
+  set_property top fx600_coralnpu_top [current_fileset]
+}
 set_property include_dirs [list $rtldir] [current_fileset]
-set_property top fx600_coralnpu_top [current_fileset]
 
 # Global defines: core module select + RVV backend config defines
 set defs "CORE_MODULE=$core_module"
@@ -61,10 +70,14 @@ set_property verilog_define $defs [current_fileset]
 set_property generic "CORE_CLKOUT_DIVIDE=$core_div" [current_fileset]
 
 # --- constraints -----------------------------------------------------------------
-add_files -fileset constrs_1 -norecurse $root/board/fx600_coralnpu.xdc
+if {$iface eq "jtag"} {
+  add_files -fileset constrs_1 -norecurse $root/board/fx600_jtag.xdc
+} else {
+  add_files -fileset constrs_1 -norecurse $root/board/fx600_coralnpu.xdc
+}
 
-# --- IP: XDMA endpoint + AXI-Lite clock converter --------------------------------
-source $root/build/gen_ip.tcl
+# --- IP ---------------------------------------------------------------------------
+if {$iface eq "jtag"} { source $root/build/gen_ip_jtag.tcl } else { source $root/build/gen_ip.tcl }
 generate_target all [get_ips]
 # Synthesize IP out-of-context (standard Vivado flow)
 foreach ip [get_ips] { create_ip_run [get_ips $ip] }

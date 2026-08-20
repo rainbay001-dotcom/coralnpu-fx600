@@ -54,6 +54,7 @@ cd coralnpu-fx600
 ```bash
 cd ~/coralnpu-fx600
 nohup vivado -mode batch -source build/build.tcl -tclargs scalar > build_scalar.log 2>&1 &
+# "scalar" builds the JTAG-only top (no PCIe) — correct for this machine.
 tail -f build_scalar.log        # Ctrl-C stops watching, NOT the build
 ```
 If Phase 0's part list showed a different name than `xcvu9p-flgb2104-2-i`,
@@ -88,48 +89,47 @@ vivado -mode batch -source build/program.tcl -tclargs build/out_scalar/fx600_cor
 
 ---
 
-## Phase 3 — make Linux see the new device (2 minutes, root)
+## Phase 3 — run Coral NPU over JTAG (1 minute; no PCIe, no root needed)
+
+The card's PCIe is not connected, so everything — including running programs —
+goes over the same JTAG cable. The runner is a Vivado script:
 
 ```bash
-sudo host/setup_xdma.sh      # first time only: builds the Xilinx XDMA driver
-sudo host/pcie_rescan.sh     # after EVERY re-programming
-```
-**Success:** `lspci` shows a device with ID `10ee:9038` and `ls /dev/xdma0_user` exists.
-**Failure:** send the script output plus `dmesg | tail -30`.
-
----
-
-## Phase 4 — run Coral NPU (1 minute)
-
-```bash
-gcc -O2 -o host/coralnpu_run host/coralnpu_run.c
-sudo host/coralnpu_run elf/wfi_slot_0.elf --verify
-sudo host/coralnpu_run elf/align_test.elf --verify
-sudo host/coralnpu_run elf/finish_txn_before_halt.elf --verify --dump 10000 8
+./host/jtag_run.sh elf/wfi_slot_0.elf
+./host/jtag_run.sh elf/align_test.elf
+./host/jtag_run.sh elf/finish_txn_before_halt.elf 60 0x00010000 8
 ```
 **Success looks like:**
 ```
+INFO: using hw_axi_1 on xcvu9p_0
 bus check: wrote 0xDEADBEEF to START_PC, read 0xdeadbeef (OK)
-loading elf/wfi_slot_0.elf
-  segment 0: vaddr 0x00000000 ...
-  loaded N words, readback verified
+loaded 8364 words in XXXX ms (spot-verified per burst)
 entry point 0x00000000
 core released
-halted after X ms, status=0x1 (clean)
+halted, status=0x1 (clean)
 ```
-Exit code 0. `status=0x3` = the program faulted (send output). Timeout = send output.
+Exit code 0. `status=0x3` = program faulted (send output). Timeout = send output.
+Watch the card: the activity LED blinks while running and goes solid on halt.
 
 That's Coral NPU running on your FX600. 🎉
 
+> Note: `jtag_run.sh` needs the same shell where you sourced `settings64.sh`
+> (it calls vivado), and python3.
+
 ---
 
-## Phase 5 (optional, later) — the vector core
+## Phase 4 (optional, later) — the vector core
 
 ```bash
 nohup vivado -mode batch -source build/build.tcl -tclargs rvv > build_rvv.log 2>&1 &
 ```
-~2–4 h build. Then Phase 2–4 with `out_rvv/fx600_coralnpu_rvv.bit`. Same ELFs run;
+~2–4 h build. Then Phase 2–3 with `out_rvv/fx600_coralnpu_rvv.bit`. Same ELFs run;
 RVV-specific tests come after the scalar flow is proven.
+
+## Phase 5 (someday) — PCIe
+When the admin connects the card's PCIe slot, build `-tclargs scalar_pcie`
+instead and use `host/setup_xdma.sh` + `host/pcie_rescan.sh` +
+`host/coralnpu_run.c` (see README). Same core, faster host link.
 
 ## Getting back to normal
 Power-cycle the machine (or just the card, if hot-swap) → Huawei's flash image
