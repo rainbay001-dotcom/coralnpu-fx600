@@ -51,7 +51,12 @@ set pkgs  [lsort [glob -nocomplain $rtldir/*_pkg.sv]]
 set rest  [lsort [glob -nocomplain $rtldir/*.sv $rtldir/*.v]]
 foreach f $pkgs { set idx [lsearch -exact $rest $f]; if {$idx >= 0} { set rest [lreplace $rest $idx $idx] } }
 
-add_files -norecurse [concat $svh $pkgs $rest]
+add_files -norecurse [concat $pkgs $rest]
+if {[llength $svh]} {
+  add_files -norecurse $svh
+  set_property file_type {Verilog Header} [get_files *.svh]
+  foreach f [get_files *rvv_backend_config.svh] { set_property is_global_include true $f }
+}
 if {$iface eq "jtag"} {
   add_files -norecurse [list $root/board/axi4_decerr_responder.sv $root/board/fx600_jtag_top.sv]
   set_property top fx600_jtag_top [current_fileset]

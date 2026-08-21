@@ -16,8 +16,13 @@ source /tools/Xilinx/Vivado/*/settings64.sh 2>/dev/null || \
 source /opt/Xilinx/Vivado/*/settings64.sh
 which vivado && vivado -version                     # <-- SAVE THIS OUTPUT
 ```
-If `vivado -version` prints something like `Vivado v2022.2` you are fine.
-2020.x–2025.x: proceed. 2017–2019: STOP and report the version first.
+Version guidance:
+* **2020.x–2025.x** — proceed normally.
+* **2018.x / 2019.x** (e.g. the 2018.3 that ships with Huawei's FX600 kit) — the
+  scripts have compatibility shims, but the Coral NPU RTL is modern SystemVerilog
+  and may not parse. **Run the 5-minute check in Phase 0.7 before building.**
+* If several Vivado versions are installed, always prefer the newest:
+  `ls -d /tools/Xilinx/Vivado/*/ /opt/Xilinx/Vivado/*/ 2>/dev/null`
 
 ```bash
 # 0.2 confirm the license covers the VU9P and get the exact part name
@@ -44,6 +49,16 @@ gcc --version | head -1; git --version; uname -r    # SAVE
 git clone https://github.com/rainbay001-dotcom/coralnpu-fx600.git
 cd coralnpu-fx600
 ```
+
+```bash
+# 0.7 FAST compatibility check (2-10 min) — does this Vivado understand the RTL?
+cd ~/coralnpu-fx600
+vivado -mode batch -source build/check_rtl.tcl -tclargs scalar 2>&1 | tee check_scalar.log
+tail -30 check_scalar.log                          # <-- SAVE
+```
+Look for the last line:
+* `CHECK_DONE ok` → this Vivado can build it. Go to Phase 1.
+* `CHECK_DONE fail` → send me `check_scalar.log`; do not start a long build.
 
 **Checkpoint: send back everything marked SAVE before building.**
 

@@ -17,8 +17,18 @@ set CSR_RST 0x00030000
 set CSR_PC  0x00030004
 set CSR_ST  0x00030008
 
-open_hw_manager
-connect_hw_server -allow_non_jtag
+# --- Vivado version compatibility shims (2018.x uses open_hw/close_hw) -------
+proc hw_open {} {
+  if {[llength [info commands open_hw_manager]]} { open_hw_manager } else { open_hw }
+}
+proc hw_close {} {
+  if {[llength [info commands close_hw_manager]]} { close_hw_manager } else { close_hw }
+}
+proc hw_connect {} {
+  if {[catch {connect_hw_server -allow_non_jtag}]} { connect_hw_server }
+}
+hw_open
+hw_connect
 open_hw_target
 set dev [lindex [get_hw_devices xcvu9p*] 0]
 if {$dev eq ""} { set dev [lindex [get_hw_devices] 0] }
@@ -112,5 +122,5 @@ if {$dump_addr ne ""} {
   foreach w $words { puts [format "  0x%08x: 0x%s" $a $w]; incr a 4 }
 }
 
-close_hw_manager
+hw_close
 exit [expr {$fault ? 2 : 0}]
