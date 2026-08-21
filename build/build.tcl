@@ -45,7 +45,7 @@ create_project -force -part $part fx600_coralnpu_$cfg $outdir/prj
 set iface jtag
 switch -glob $cfg {
   scalar       { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0 }
-  rvv          { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 40.0 }
+  rvv          { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 50.0 }
   scalar_pcie  { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0; set iface pcie }
   rvv_pcie     { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 40.0; set iface pcie }
   default { puts "ERROR: unknown cfg $cfg"; exit 1 }
