@@ -46,6 +46,8 @@ set iface jtag
 switch -glob $cfg {
   scalar       { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0 }
   rvv          { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 50.0 }
+  scalar_selfclk { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0; set iface selfclk }
+  rvv_selfclk    { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 50.0; set iface selfclk }
   scalar_pcie  { set rtldir $root/rtl/scalar; set core_module CoreMiniAxi;    set core_div 16.0; set iface pcie }
   rvv_pcie     { set rtldir $root/rtl/rvv;    set core_module RvvCoreMiniAxi; set core_div 40.0; set iface pcie }
   default { puts "ERROR: unknown cfg $cfg"; exit 1 }
@@ -63,7 +65,10 @@ if {[llength $svh]} {
   set_property file_type {Verilog Header} [get_files *.svh]
   foreach f [get_files *rvv_backend_config.svh] { set_property is_global_include true $f }
 }
-if {$iface eq "jtag"} {
+if {$iface eq "selfclk"} {
+  add_files -norecurse [list $root/board/axi4_decerr_responder.sv $root/board/fx600_selfclk_top.sv]
+  set_property top fx600_selfclk_top [current_fileset]
+} elseif {$iface eq "jtag"} {
   add_files -norecurse [list $root/board/axi4_decerr_responder.sv $root/board/fx600_jtag_top.sv]
   set_property top fx600_jtag_top [current_fileset]
 } else {
@@ -75,21 +80,26 @@ set_property file_type SystemVerilog [get_files *.v]
 
 # Global defines: core module select + RVV backend config defines
 set defs "CORE_MODULE=$core_module"
-if {$cfg eq "rvv"} { append defs " VLEN_128 ZVE32F_ON USE_GENERIC" }
+if {[string match rvv* $cfg]} { append defs " VLEN_128 ZVE32F_ON USE_GENERIC" }
 set_property verilog_define $defs [current_fileset]
 
-# Core clock divide for the MMCM (generic on the top)
-set_property generic "CORE_CLKOUT_DIVIDE=$core_div" [current_fileset]
+# Core clock divide for the MMCM (generic on the top). The selfclk variant has
+# no MMCM and no parameters, so skip it there.
+if {$iface ne "selfclk"} {
+  set_property generic "CORE_CLKOUT_DIVIDE=$core_div" [current_fileset]
+}
 
 # --- constraints -----------------------------------------------------------------
-if {$iface eq "jtag"} {
+if {$iface eq "selfclk"} {
+  add_files -fileset constrs_1 -norecurse $root/board/fx600_selfclk.xdc
+} elseif {$iface eq "jtag"} {
   add_files -fileset constrs_1 -norecurse $root/board/fx600_jtag.xdc
 } else {
   add_files -fileset constrs_1 -norecurse $root/board/fx600_coralnpu.xdc
 }
 
 # --- IP ---------------------------------------------------------------------------
-if {$iface eq "jtag"} { source $root/build/gen_ip_jtag.tcl } else { source $root/build/gen_ip.tcl }
+if {$iface eq "jtag" || $iface eq "selfclk"} { source $root/build/gen_ip_jtag.tcl } else { source $root/build/gen_ip.tcl }
 generate_target all [get_ips]
 # Synthesize IP out-of-context (standard Vivado flow)
 foreach ip [get_ips] { create_ip_run [get_ips $ip] }
