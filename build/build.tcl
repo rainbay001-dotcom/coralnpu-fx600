@@ -102,6 +102,11 @@ launch_runs synth_1 -jobs 8
 wait_on_run synth_1
 if {[get_property PROGRESS [get_runs synth_1]] ne "100%"} { puts "ERROR: synthesis failed"; exit 1 }
 open_run synth_1
+# Optional: insert an ILA for on-hardware signal capture (set ILA=1 in the env)
+if {[info exists ::env(ILA)] && $::env(ILA) eq "1"} {
+  source $root/build/add_ila.tcl
+  write_checkpoint -force $outdir/post_synth_ila.dcp
+}
 report_utilization -file $outdir/reports/util_synth.rpt
 report_utilization -hierarchical -hierarchical_depth 3 -file $outdir/reports/util_hier_synth.rpt
 close_design
