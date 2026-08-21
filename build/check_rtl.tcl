@@ -24,6 +24,7 @@ if {$part eq ""} {
   set part [lindex [lsort $cands] 0]
 }
 puts "INFO: part=$part"
+puts "INFO: all xcvu9p parts available here: [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]]"
 
 switch -glob $cfg {
   scalar* { set rtldir $root/rtl/scalar; set top CoreMiniAxi }
@@ -48,6 +49,7 @@ if {[llength $svh]} {
   foreach f [get_files *rvv_backend_config.svh] { set_property is_global_include true $f }
 }
 set_property include_dirs [list $rtldir] [current_fileset]
+set_property file_type SystemVerilog [get_files *.v]
 set_property top $top [current_fileset]
 
 set defs ""

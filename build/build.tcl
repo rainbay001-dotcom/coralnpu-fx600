@@ -65,6 +65,7 @@ if {$iface eq "jtag"} {
   set_property top fx600_coralnpu_top [current_fileset]
 }
 set_property include_dirs [list $rtldir] [current_fileset]
+set_property file_type SystemVerilog [get_files *.v]
 
 # Global defines: core module select + RVV backend config defines
 set defs "CORE_MODULE=$core_module"
