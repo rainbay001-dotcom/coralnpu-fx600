@@ -87,7 +87,7 @@ EOF
     { vivado -mode batch -nolog -nojournal -source /tmp/rep.tcl 2>&1 | grep -E "WNS_RESULT|ERROR"
       echo "=== utilization ==="; grep -m1 -A9 "CLB LUTs" build/out_$CFG/reports/util_impl.rpt
       echo "=== timing ==="; grep -m1 -A5 "Design Timing Summary" build/out_$CFG/reports/timing_impl.rpt
-      echo "=== hierarchy ==="; grep -m1 -A12 "| Instance" build/out_$CFG/reports/util_hier_impl.rpt
+      echo "=== hierarchy ==="; grep -m1 -A14 -E "^\\|[[:space:]]+Instance" build/out_$CFG/reports/util_hier_impl.rpt
     } 2>&1 | tee "$OUT/reports.log"
     echo; echo ">>> saved to $OUT/reports.log"
     ;;
