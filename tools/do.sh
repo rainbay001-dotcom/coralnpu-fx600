@@ -127,6 +127,73 @@ EOF
     vivado -mode batch -nolog -nojournal -source host/jtag_run.tcl -tclargs /tmp/prog.tcl 120 2>&1 | tee "$OUT/run.log" | tail -20
     ;;
 
+  package)
+    # Build a self-contained kit for the machine that has the JTAG cable.
+    CFG="${1:-scalar_selfclk}"
+    PKG="$HOME/Downloads/coralnpu-jtag-kit"
+    BIT="build/out_$CFG/fx600_coralnpu_$CFG.bit"
+    [ -f "$BIT" ] || { echo "ERROR: $BIT not found — build first"; exit 1; }
+    rm -rf "$PKG"; mkdir -p "$PKG"
+    cp "$BIT" "$PKG/"
+    cp build/program.tcl host/jtag_run.tcl "$PKG/"
+    for e in elf/*.elf; do
+      n=$(basename "$e" .elf)
+      python3 host/elf2jtag.py "$e" > "$PKG/prog_$n.tcl" && echo "  prepared prog_$n.tcl"
+    done
+    cat > "$PKG/RUN_ON_CARD_HOST.md" <<'MD'
+# Run Coral NPU on the FX600 — on the machine with the JTAG cable
+
+Everything here is self-contained: no Python, no repo, no internet needed.
+You only need **Vivado** (or the free **Vivado Lab Edition**) on this machine.
+
+## 1. Program the FPGA
+
+Linux:
+```
+vivado -mode batch -source program.tcl -tclargs fx600_coralnpu_scalar_selfclk.bit
+```
+Windows (Vivado shell / cmd):
+```
+vivado -mode batch -source program.tcl -tclargs fx600_coralnpu_scalar_selfclk.bit
+```
+Expect: `PROGRAMMED xcvu9p_0 with ...bit` and no ERROR lines.
+
+> This writes the FPGA's volatile SRAM only. A power cycle restores the card's
+> original image. Nothing is written to flash.
+
+## 2. Run a program on the core
+
+```
+vivado -mode batch -source jtag_run.tcl -tclargs prog_wfi_slot_0.tcl 120
+```
+Other programs: `prog_align_test.tcl`, `prog_finish_txn_before_halt.tcl`
+
+Success looks like:
+```
+INFO: using hw_axi_1 on xcvu9p_0
+bus check: wrote 0xDEADBEEF to START_PC, read 0xdeadbeef (OK)
+loaded 8364 words in NNNN ms (spot-verified per burst)
+entry point 0x00000000
+core released
+halted, status=0x1 (clean)
+```
+`status=0x1` = the RISC-V program ran to completion and halted cleanly.
+`status=0x3` = it faulted. A timeout means it never halted.
+
+## If Vivado is not installed here
+Download **Vivado Lab Edition** (free, no licence needed, ~2–3 GB) from AMD's
+downloads page on a machine with internet, copy the installer over, install.
+Lab Edition can program devices and run hardware-manager Tcl — everything above.
+
+## If it says "No matching targets"
+The JTAG cable isn't visible to this Vivado. Check the USB cable is attached and,
+on Linux, that the cable drivers are installed:
+`sudo <vivado>/data/xicom/cable_drivers/lin64/install_script/install_drivers/install_drivers`
+MD
+    du -sh "$PKG"; ls -la "$PKG"
+    echo ">>> kit ready at $PKG — copy this folder to the card's host machine"
+    ;;
+
   collect)
     cp -f "$ROOT"/build_*.log "$OUT/" 2>/dev/null
     cp -f "$ROOT"/build/out_*/reports/*.rpt "$OUT/" 2>/dev/null
