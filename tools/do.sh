@@ -20,13 +20,21 @@ OUT="$HOME/Downloads/coralnpu-out"; mkdir -p "$OUT"
 TASK="${1:-help}"; shift || true
 
 vivado_env() {
-  command -v vivado >/dev/null 2>&1 && return 0
+  # VIVADO_VER=2019.1.3 forces a specific version (needed when a bitstream must
+  # match an older Hardware Manager elsewhere).
+  if [ -z "${VIVADO_VER:-}" ] && command -v vivado >/dev/null 2>&1; then return 0; fi
   for s in /software/xilinx/Vivado/*/settings64.sh /opt/Xilinx/Vivado/*/settings64.sh \
            /tools/Xilinx/Vivado/*/settings64.sh /usr/local/Xilinx/Vivado/*/settings64.sh; do
     [ -f "$s" ] && cands+=("$s")
   done
   [ "${#cands[@]:-0}" -eq 0 ] && { echo "ERROR: no Vivado found"; return 1; }
-  local pick; pick=$(printf '%s\n' "${cands[@]}" | sort -V | tail -1)
+  local pick
+  if [ -n "${VIVADO_VER:-}" ]; then
+    pick=$(printf '%s\n' "${cands[@]}" | grep "/${VIVADO_VER}/" | head -1)
+    [ -z "$pick" ] && { echo "ERROR: Vivado $VIVADO_VER not found among: ${cands[*]}"; return 1; }
+  else
+    pick=$(printf '%s\n' "${cands[@]}" | sort -V | tail -1)
+  fi
   echo "INFO: sourcing $pick"; source "$pick"
 }
 declare -a cands=()
