@@ -16,7 +16,7 @@
 # ============================================================================
 
 set cfg  [expr {[llength $argv] > 0 ? [lindex $argv 0] : "scalar"}]
-set part [expr {[llength $argv] > 1 ? [lindex $argv 1] : "xcvu9p-flgb2104-2-i"}]
+set part [expr {[llength $argv] > 1 ? [lindex $argv 1] : ""}]
 
 set root   [file normalize [file join [file dirname [info script]] ..]]
 set outdir [file join $root build out_$cfg]
@@ -25,10 +25,16 @@ file mkdir $outdir/reports
 
 puts "INFO: cfg=$cfg part=$part root=$root"
 
-# --- sanity: is the part available in this Vivado? ---------------------------
-if {[llength [get_parts $part]] == 0} {
+# --- part selection: use the one given, else the first VU9P this Vivado offers --
+if {$part eq ""} {
+  set cands [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]]
+  if {[llength $cands] == 0} { puts "ERROR: no xcvu9p parts available in this Vivado"; exit 1 }
+  set part [lindex $cands 0]
+  puts "INFO: no part given; auto-selected $part"
+  puts "INFO: other VU9P parts available: $cands"
+} elseif {[llength [get_parts $part]] == 0} {
   puts "ERROR: part $part not found. Available VU9P parts:"
-  puts [get_parts -filter {DEVICE =~ xcvu9p*}]
+  puts [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]]
   exit 1
 }
 
