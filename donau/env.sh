@@ -2,7 +2,8 @@
 # Locate and load Vivado on whatever node this runs on. Sourced by the other
 # scripts. Picks the NEWEST version found unless VIVADO_VER is set.
 find_vivado() {
-  if command -v vivado >/dev/null 2>&1 && [ -z "${VIVADO_VER:-}" ]; then return 0; fi
+  # NOTE: we do NOT trust a vivado already on PATH — clusters often default to an
+  # ancient version. Always enumerate and pick the newest (or $VIVADO_VER).
   local cands=()
   for base in /software/xilinx /software/Xilinx /opt/Xilinx /opt/xilinx /tools/Xilinx /tools/xilinx \
               /usr/local/Xilinx /usr/share/Xilinx "$HOME/Xilinx" /share/Xilinx /data/Xilinx \
