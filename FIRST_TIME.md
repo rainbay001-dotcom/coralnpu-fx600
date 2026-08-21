@@ -49,6 +49,9 @@ gcc --version | head -1; git --version; uname -r    # SAVE
 git clone https://github.com/rainbay001-dotcom/coralnpu-fx600.git
 cd coralnpu-fx600
 ```
+> **No internet on the cluster?** See [OFFLINE.md](OFFLINE.md): download the ZIP on
+> a machine that has internet, move it through your shared folder, `unzip`, then
+> `chmod +x donau/*.sh host/*.sh`.
 
 ```bash
 # 0.7 FAST compatibility check (2-10 min) — does this Vivado understand the RTL?
