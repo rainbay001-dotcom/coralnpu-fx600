@@ -136,8 +136,12 @@ report_drc -file $outdir/reports/drc.rpt
 
 # --- collect outputs -----------------------------------------------------------------
 file copy -force [glob $outdir/prj/fx600_coralnpu_$cfg.runs/impl_1/*.bit] $outdir/fx600_coralnpu_$cfg.bit
-write_cfgmem -force -format mcs -size 128 -interface SPIx4 \
-  -loadbit "up 0x0 $outdir/fx600_coralnpu_$cfg.bit" $outdir/fx600_coralnpu_$cfg.mcs
+# Optional SPI flash image. We never program flash on a borrowed card, so a
+# failure here (e.g. SPI_BUSWIDTH not set in a minimal XDC) must not fail the build.
+if {[catch {write_cfgmem -force -format mcs -size 128 -interface SPIx4 \
+      -loadbit "up 0x0 $outdir/fx600_coralnpu_$cfg.bit" $outdir/fx600_coralnpu_$cfg.mcs} e]} {
+  puts "INFO: .mcs flash image skipped (not needed for JTAG use): $e"
+}
 
 # WNS summary line for the issue reply
 set wns [get_property SLACK [get_timing_paths -max_paths 1 -nworst 1 -setup]]

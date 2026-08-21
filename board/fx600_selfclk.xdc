@@ -11,3 +11,7 @@ set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 
 # JTAG-AXI debug hub runs on the core clock.
 set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
+
+# Needed only if you ever want a .mcs flash image (we normally don't):
+set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+set_property BITSTREAM.CONFIG.CONFIGRATE 21.3 [current_design]
