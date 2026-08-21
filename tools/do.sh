@@ -144,6 +144,7 @@ EOF
     rm -rf "$PKG"; mkdir -p "$PKG"
     cp "$BIT" "$PKG/"
     cp build/program.tcl host/jtag_run.tcl "$PKG/"
+    cp kit/do_all.tcl kit/run_all.bat "$PKG/" 2>/dev/null
     for e in elf/*.elf; do
       n=$(basename "$e" .elf)
       python3 host/elf2jtag.py "$e" > "$PKG/prog_$n.tcl" && echo "  prepared prog_$n.tcl"
