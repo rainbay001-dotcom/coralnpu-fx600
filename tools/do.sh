@@ -51,8 +51,11 @@ case "$TASK" in
 puts "VU9P_PARTS: [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]]"
 foreach p [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]] {
   if {[catch {link_design -part $p -quiet}]} { continue }
-  set a [get_package_pins -quiet AY23]; set b [get_package_pins -quiet AR26]
-  puts "PKGCHK $p AY23=[expr {[llength $a] ? {yes} : {no}}] AR26=[expr {[llength $b] ? {yes} : {no}}]"
+  set fa [get_property -quiet PIN_FUNC [get_package_pins -quiet AY23]]
+  set fb [get_property -quiet PIN_FUNC [get_package_pins -quiet BA23]]
+  set fr [get_property -quiet PIN_FUNC [get_package_pins -quiet AR26]]
+  # FX600 (flgb2104) expects: AY23=IO_L12P_..._GC_64  BA23=IO_L12N_..._GC_64  AR26=IO_T3U_N12_PERSTN0_65
+  puts "PKGCHK $p AY23=$fa BA23=$fb AR26=$fr"
   close_design -quiet
 }
 exit

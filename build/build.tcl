@@ -5,8 +5,8 @@
 #
 #   scalar (default) : CoreMiniAxi @ 62.5 MHz
 #   rvv              : RvvCoreMiniAxi @ 25 MHz (MMCM divide 40)
-#   PART             : default xcvu9p-flgb2104-2-i (FX600). Override if
-#                      `get_parts` on your Vivado shows a different package/grade.
+#   PART             : default xcvu9p-flgb2104-2-i — the FX600's real part
+#                      (confirmed; see docs/FX600_PART_AND_PINS.md). NOT flga2104.
 #
 # Outputs (all under build/out_<cfg>/):
 #   fx600_coralnpu_<cfg>.bit      bitstream (JTAG load)
@@ -29,9 +29,16 @@ puts "INFO: cfg=$cfg part=$part root=$root"
 if {$part eq ""} {
   set cands [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]]
   if {[llength $cands] == 0} { puts "ERROR: no xcvu9p parts available in this Vivado"; exit 1 }
-  set part [lindex $cands 0]
+  # The FX600 is xcvu9p-flgb2104-2-i (see docs/FX600_PART_AND_PINS.md). Prefer it.
+  if {[lsearch -exact $cands xcvu9p-flgb2104-2-i] >= 0} {
+    set part xcvu9p-flgb2104-2-i
+  } else {
+    set part [lindex $cands 0]
+    puts "WARNING: xcvu9p-flgb2104-2-i (the FX600's part) is not installed in this Vivado;"
+    puts "WARNING: falling back to $part — pinned configs will NOT constrain correctly on it."
+  }
   puts "INFO: no part given; auto-selected $part"
-  puts "INFO: other VU9P parts available: $cands"
+  puts "INFO: all VU9P parts available: $cands"
 } elseif {[llength [get_parts $part]] == 0} {
   puts "ERROR: part $part not found. Available VU9P parts:"
   puts [lsort [get_parts -filter {DEVICE =~ xcvu9p*}]]
